@@ -2,7 +2,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import Calendar from './Calendar.js';
+import App from './app.js';
 
 // 判斷是否在Kintone環境中
 const isKintone = () => {
@@ -25,7 +25,7 @@ if (isKintone()) {
         const root = ReactDOM.createRoot(rootElement);
         root.render(
           <React.StrictMode>
-            <Calendar />
+            <App />
           </React.StrictMode>
         );
       }
@@ -43,7 +43,7 @@ if (isKintone()) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <Calendar />
+      <App />
     </React.StrictMode>
   );
 }
