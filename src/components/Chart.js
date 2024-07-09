@@ -1,22 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import ReactECharts from 'echarts-for-react';
 import { prepareBoxplotData } from '../utils/dataUtils'; // 引入 prepareBoxplotData
 
 const Chart = ({ chartType, data, selectedValues, xAxis }) => {
   const chartRef = useRef(null);
 
-  useEffect(() => {
-    const chartDom = document.getElementById('chart');
-    let myChart;
-
-    if (chartRef.current === null) {
-      myChart = echarts.init(chartDom);
-      chartRef.current = myChart;
-    } else {
-      myChart = chartRef.current;
-      myChart.clear();  // 清空圖表
-    }
-
+  const getOption = () => {
     const xAxisData = Object.keys(data);
     let series;
     let option;
@@ -186,10 +175,6 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         break;
     }
 
-    const legendSelected = Object.fromEntries(
-      selectedValues.map(value => [value, true])
-    );
-
     if (chartType !== 'radar') {
       option = {
         title: {
@@ -199,7 +184,7 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         tooltip: { trigger: chartType === 'pie' ? 'item' : 'axis' },
         legend: {
           data: selectedValues,
-          selected: legendSelected
+          selected: Object.fromEntries(selectedValues.map(value => [value, true]))
         },
         toolbox: {
           show: true,
@@ -222,7 +207,7 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
           right: 50,
           bottom: 100 // 調整底部空間大小
         },
-        xAxis: (['pie', 'gauge', 'funnel', 'radar'].includes(chartType)) ? null : {
+        xAxis: chartType === 'pie'   || chartType == 'funnel' || chartType == 'treemap' || chartType == 'gauge'  ? null : {
           type: 'category',
           data: xAxisData,
           axisLabel: {
@@ -236,23 +221,22 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
             }
           }
         },
-        yAxis: (['pie', 'gauge', 'funnel', 'radar'].includes(chartType)) ? null : { type: 'value' },
+        yAxis: chartType === 'pie'  || chartType == 'funnel' || chartType == 'treemap' || chartType == 'gauge'  ? null : { type: 'value' },
         series: series
       };
     }
 
-    myChart.setOption(option);
+    return option;
+  };
 
-    // 清除圖表
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.dispose();
-        chartRef.current = null;
-      }
-    };
-  }, [chartType, data, selectedValues, xAxis]);
-
-  return <div id="chart" style={{ width: '100%', height: 'calc(100vh - 200px)' }}></div>;
+  return (
+    <ReactECharts
+      ref={chartRef}
+      option={getOption()}
+      notMerge={true}
+      style={{ width: '100%', height: 'calc(100vh - 200px)' }}
+    />
+  );
 };
 
 export default Chart;

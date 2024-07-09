@@ -1,20 +1,22 @@
 // src/utils/dataUtils.js
 import { fieldCodes } from './constants';
 
+const appID = 2004;
 export async function fetchData(selectedXAxis) {
-  const appID = kintone.app.getId();
   const query = `${selectedXAxis} != ""`;
   let allRecords = [];
   let offset = 0;
   const limit = 500;
 
+  const getRecord = {
+    app: appID,
+    query: `${query} limit ${limit} offset ${offset}`
+  }
+
   try {
     while (true) {
-      const resp = await kintone.api(
-        kintone.api.url('/k/v1/records', true),
-        'GET',
-        { app: appID, query: `${query} limit ${limit} offset ${offset}` }
-      );
+      const resp = await kintone.api(kintone.api.url('/k/v1/records', true),'GET', getRecord);
+      
       allRecords = allRecords.concat(resp.records);
       offset += limit;
       if (resp.records.length < limit) {
@@ -22,7 +24,7 @@ export async function fetchData(selectedXAxis) {
       }
     }
   } catch (err) {
-    console.error(err);
+    console.error(`fetchData: ${err}`);
     throw err;
   }
 

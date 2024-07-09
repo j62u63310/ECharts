@@ -2,9 +2,9 @@
 export const fieldCodes = {
     xAxisOptions: ["商品名稱", "倉庫名稱", "最後入庫日", "最後出庫日"],
     chartValues: ["庫存數量", "可用量", "平均成本", "庫存價值"]
-  };
+};
   
-  export const chartTypeTitles = {
+export const chartTypeTitles = {
     bar: '柱狀圖',
     stackedBar: '堆疊柱狀圖',
     line: '折線圖',
@@ -17,5 +17,5 @@ export const fieldCodes = {
     boxplot: '盒鬚圖',
     gauge: '儀表圖',
     radar: '雷達圖'
-  };
+};
   
