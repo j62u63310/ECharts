@@ -1,32 +1,42 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { prepareBoxplotData } from '../utils/dataUtils'; // 引入 prepareBoxplotData
+import { prepareBoxplotData } from '../utils/dataUtils';
 
-const Chart = ({ chartType, data, selectedValues, xAxis }) => {
+const Chart = ({ chartType, data }) => {
   const chartRef = useRef(null);
 
-  const getOption = () => {
+  const processValue = (value) => (value === undefined || value === null || value === 'N/A') ? 0 : value;
+
+  const getOption = useMemo(() => {
     const xAxisData = Object.keys(data);
+
+    const legends = new Set();
+    xAxisData.forEach(key => {
+      Object.keys(data[key]).forEach(subKey => {
+        if (subKey !== 'sum') legends.add(subKey);
+      });
+    });
+
     let series;
     let option;
 
     switch (chartType) {
       case 'pie':
         series = [{
-          name: selectedValues[0],
+          name: '合計',
           type: 'pie',
           radius: '50%',
-          data: xAxisData.map(item => ({ name: item, value: data[item][selectedValues[0]] })),
+          data: xAxisData.map(item => ({ name: item, value: processValue(data[item]?.sum) })),
           label: { formatter: '{b}: {c}', position: 'outside' },
           emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
         }];
         break;
       case 'scatter':
       case 'effectScatter':
-        series = selectedValues.map(value => ({
-          name: value,
+        series = Array.from(legends).map(legend => ({
+          name: legend,
           type: chartType,
-          data: xAxisData.map(item => [item, data[item][value]]),
+          data: xAxisData.map(item => [item, processValue(data[item]?.[legend])]),
           symbolSize: chartType === 'effectScatter' ? 20 : 10,
           showEffectOn: 'render',
           rippleEffect: { brushType: 'stroke' }
@@ -34,9 +44,9 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         break;
       case 'heatmap':
         series = [{
-          name: selectedValues[0],
+          name: '熱圖',
           type: 'heatmap',
-          data: xAxisData.map((item, idx) => [idx, 0, data[item][selectedValues[0]]]),
+          data: xAxisData.map((item, idx) => [idx, 0, processValue(data[item]?.sum)]),
           label: {
             show: true,
             formatter: function(params) {
@@ -53,9 +63,9 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         break;
       case 'funnel':
         series = [{
-          name: '數據',
+          name: '漏斗圖',
           type: 'funnel',
-          data: xAxisData.map(item => ({ name: item, value: data[item][selectedValues[0]] })),
+          data: xAxisData.map(item => ({ name: item, value: processValue(data[item]?.sum) })),
           label: { show: true, position: 'inside', formatter: '{b}: {c}' },
           labelLine: { show: false },
           emphasis: { label: { fontSize: 20 } }
@@ -63,11 +73,11 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         break;
       case 'treemap':
         series = [{
-          name: selectedValues[0],
+          name: '樹狀圖',
           type: 'treemap',
           data: xAxisData.map(item => ({
             name: item,
-            value: data[item][selectedValues[0]],
+            value: processValue(data[item]?.sum),
             label: {
               show: true,
               formatter: '{b}: {c}' // 設置標籤顯示格式，{b} 是名字，{c} 是值
@@ -91,36 +101,42 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         }];
         break;
       case 'boxplot':
-        const boxplotData = selectedValues.map(value => (
-          prepareBoxplotData(xAxisData.map(item => [data[item][value]]))
-        ));
-        series = boxplotData.map((item, idx) => ({
-          name: selectedValues[idx],
-          type: 'boxplot',
-          data: item.boxData
-        }));
-        break;
-      case 'gauge':
+        const boxplotData = xAxisData.map(item =>
+          Array.from(legends).map(legend => processValue(data[item]?.[legend]))
+        );
+
+        const preparedBoxplotData = prepareBoxplotData(boxplotData).boxData;
+
         series = [{
-          name: selectedValues[0],
-          type: 'gauge',
-          detail: { formatter: '{value}' },
-          data: [{ value: data[xAxisData[0]][selectedValues[0]], name: xAxisData[0] }]
+          name: '盒鬚圖',
+          type: 'boxplot',
+          data: preparedBoxplotData
         }];
         break;
-      case 'radar':
-        const radarIndicator = xAxisData.map(item => ({
-          name: item,
-          max: Math.max(...selectedValues.map(value => data[item][value])) * 1.2
+      case 'stackedBar':
+        series = Array.from(legends).map(legend => ({
+          name: legend,
+          type: 'bar',
+          stack: '總量',
+          data: xAxisData.map(key => {
+            const processedValue = processValue(data[key]?.[legend]);
+            return processedValue;
+          }),
+          markPoint: {
+            data: [
+              { type: 'max', name: '最大值' },
+              { type: 'min', name: '最小值' }
+            ]
+          },
+          markLine: {
+            data: [{ type: 'average', name: '平均值' }]
+          }
         }));
-
-        series = selectedValues.map(value => ({
-          name: value,
-          type: 'radar',
-          data: [{
-            value: xAxisData.map(item => data[item][value]),
-            name: value
-          }]
+        break;
+      case 'radar':
+        const radarIndicator = Array.from(legends).map(legend => ({
+          name: legend,
+          max: Math.max(...xAxisData.map(item => processValue(data[item]?.[legend]))) * 1.2
         }));
 
         option = {
@@ -129,7 +145,13 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
             link: 'https://ken-demo.cybozu.com/k/2004/?view=8252317'
           },
           tooltip: { trigger: 'item' },
-          legend: { data: selectedValues },
+          legend: {
+            data: xAxisData,
+            selected: Object.fromEntries(xAxisData.map(value => [value, true])),
+            bottom: 0,
+            type: 'scroll',
+            orient: 'horizontal'
+          },
           toolbox: {
             show: true,
             feature: {
@@ -146,22 +168,21 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
             }
           },
           radar: { indicator: radarIndicator },
-          series: series
+          series: [{
+            name: '雷達圖',
+            type: 'radar',
+            data: xAxisData.map(item => ({
+              value: Array.from(legends).map(legend => processValue(data[item]?.[legend])),
+              name: item
+            }))
+          }]
         };
         break;
-      case 'stackedBar':
-        series = selectedValues.map(value => ({
-          name: value,
-          type: 'bar',
-          stack: '總量',
-          data: xAxisData.map(item => data[item][value])
-        }));
-        break;
       default:
-        series = selectedValues.map(value => ({
-          name: value,
+        series = Array.from(legends).map(legend => ({
+          name: legend,
           type: chartType,
-          data: xAxisData.map(item => data[item][value]),
+          data: xAxisData.map(key => processValue(data[key]?.[legend])),
           markPoint: {
             data: [
               { type: 'max', name: '最大值' },
@@ -183,8 +204,11 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         },
         tooltip: { trigger: chartType === 'pie' ? 'item' : 'axis' },
         legend: {
-          data: selectedValues,
-          selected: Object.fromEntries(selectedValues.map(value => [value, true]))
+          data: Array.from(legends),
+          selected: Object.fromEntries(Array.from(legends).map(value => [value, true])),
+          bottom: 0,
+          type: 'scroll',
+          orient: 'horizontal'
         },
         toolbox: {
           show: true,
@@ -205,9 +229,9 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
         grid: {
           left: 50,
           right: 50,
-          bottom: 100 // 調整底部空間大小
+          bottom: 150
         },
-        xAxis: chartType === 'pie'   || chartType == 'funnel' || chartType == 'treemap' || chartType == 'gauge'  ? null : {
+        xAxis: chartType === 'pie' || chartType === 'funnel' || chartType === 'treemap' || chartType === 'gauge' ? null : {
           type: 'category',
           data: xAxisData,
           axisLabel: {
@@ -221,18 +245,18 @@ const Chart = ({ chartType, data, selectedValues, xAxis }) => {
             }
           }
         },
-        yAxis: chartType === 'pie'  || chartType == 'funnel' || chartType == 'treemap' || chartType == 'gauge'  ? null : { type: 'value' },
+        yAxis: chartType === 'pie' || chartType === 'funnel' || chartType === 'treemap' || chartType === 'gauge' ? null : { type: 'value' },
         series: series
       };
     }
 
     return option;
-  };
+  }, [chartType, data]);
 
   return (
     <ReactECharts
       ref={chartRef}
-      option={getOption()}
+      option={getOption}
       notMerge={true}
       style={{ width: '100%', height: 'calc(100vh - 200px)' }}
     />

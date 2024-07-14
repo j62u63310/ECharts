@@ -4,9 +4,9 @@ import App from './App';
 
 (() => {
   kintone.events.on('app.record.index.show', (event) => {
-    console.log('loaded');
     const customView = Number(8252375);
     if (event.viewId === customView) {
+      console.log("Echats loading...")
       let rootElement = document.querySelector('.root');
       if (!rootElement) {
         rootElement = document.createElement('div');
@@ -15,9 +15,7 @@ import App from './App';
       }
       const root = ReactDOM.createRoot(rootElement);
       root.render(
-        <React.StrictMode>
           <App />
-        </React.StrictMode>
       );
     }
     return event;

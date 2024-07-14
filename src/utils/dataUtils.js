@@ -1,7 +1,14 @@
-// src/utils/dataUtils.js
-import { fieldCodes } from './constants';
-
 const appID = 2004;
+
+function formatDate(dateString) {
+  if(dateString === "N/A") return dateString;
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
+  const day = ('0' + date.getDate()).slice(-2);
+  return `${year}/${month}/${day}`;
+}
+
 export async function fetchData(selectedXAxis) {
   const query = `${selectedXAxis} != ""`;
   let allRecords = [];
@@ -31,24 +38,46 @@ export async function fetchData(selectedXAxis) {
   return allRecords;
 }
 
-export function processData(records, xAxis) {
-  return records.reduce((acc, record) => {
-    const key = record[xAxis].value;
-    if (!acc[key]) {
-      acc[key] = {
-        sum: 0
-      };
-      fieldCodes.chartValues.forEach(value => {
-        acc[key][value] = 0;
-      });
-    }
-    fieldCodes.chartValues.forEach(value => {
-      if (record[value] && record[value].value) {
-        acc[key][value] += parseFloat(record[value].value);
-        acc[key].sum += parseFloat(record[value].value);
+export function processData(records, selectedXAxis, selectedMidAxis, selectedSubAxis, selectChartValues) {
+  return records.reduce((accumulator, record) => {
+    let xAxis = record[selectedXAxis].value == "" ? "N/A" : record[selectedXAxis].value;
+    let midAxis = record[selectedMidAxis].value == "" ? "N/A" : record[selectedMidAxis].value;
+    let subAxis = record[selectedSubAxis]?.value || '-';
+    const chartValue = parseInt(record[selectChartValues].value, 10);
+
+    xAxis   = selectedXAxis   == "更新時間" || selectedXAxis   == "建立時間" ? formatDate(xAxis) : xAxis;
+    midAxis = selectedMidAxis == "更新時間" || selectedMidAxis == "建立時間" ? formatDate(midAxis) : midAxis;
+    subAxis = selectedSubAxis == "更新時間" || selectedSubAxis == "建立時間" ? formatDate(subAxis) : subAxis;
+
+    if (subAxis === '-') {
+      if (!accumulator[xAxis]) {
+        accumulator[xAxis] = {
+          "sum" : 0
+        };
       }
-    });
-    return acc;
+      if (!accumulator[xAxis][midAxis]) {
+        accumulator[xAxis][midAxis] = 0;
+      }
+      accumulator[xAxis][midAxis] += chartValue;
+
+      accumulator[xAxis].sum += chartValue;
+    }else{
+      const key = `${xAxis} , ${midAxis}`;
+      if (!accumulator[key]) {
+        accumulator[key] = {
+          sum: 0
+        };
+        if (subAxis !== '-') {
+          if (!accumulator[key][subAxis]) {
+            accumulator[key][subAxis] = 0;
+          }
+          accumulator[key][subAxis] += chartValue;
+        }
+        accumulator[key].sum += chartValue;
+      }
+    }
+
+    return accumulator;
   }, {});
 }
 
@@ -58,16 +87,17 @@ export function getPaginatedData(data, page, recordsPerPage) {
   const end = start + recordsPerPage;
   const paginatedKeys = keys.slice(start, end);
 
-  return paginatedKeys.reduce((acc, key) => {
-    acc[key] = data[key];
-    return acc;
+  return paginatedKeys.reduce((accumulator, key) => {
+    accumulator[key] = data[key];
+    return accumulator;
   }, {});
 }
 
-export function sortData(data, sortOrder, selectedValues) {
+export function sortData(data, sortOrder) {
   const sortedKeys = Object.keys(data).sort((a, b) => {
-    const sumA = selectedValues.reduce((sum, value) => sum + data[a][value], 0);
-    const sumB = selectedValues.reduce((sum, value) => sum + data[b][value], 0);
+    const sumA = data[a].sum;
+    const sumB = data[b].sum;
+
     if (sortOrder === 'asc') {
       return sumA - sumB;
     } else {
@@ -75,11 +105,12 @@ export function sortData(data, sortOrder, selectedValues) {
     }
   });
 
-  return sortedKeys.reduce((acc, key) => {
-    acc[key] = data[key];
-    return acc;
+  return sortedKeys.reduce((accumulator, key) => {
+    accumulator[key] = data[key];
+    return accumulator;
   }, {});
 }
+
 
 export function prepareBoxplotData(data) {
   const boxData = [];

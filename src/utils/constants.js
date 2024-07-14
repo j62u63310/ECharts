@@ -1,6 +1,6 @@
 // src/utils/constants.js
 export const fieldCodes = {
-    xAxisOptions: ["商品名稱", "倉庫名稱", "最後入庫日", "最後出庫日"],
+    xAxisOptions: ["商品名稱", "倉庫名稱", "儲位", "廠牌", "建立時間", "更新時間"],
     chartValues: ["庫存數量", "可用量", "平均成本", "庫存價值"]
 };
   
@@ -10,12 +10,11 @@ export const chartTypeTitles = {
     line: '折線圖',
     pie: '圓餅圖',
     scatter: '散點圖',
-    effectScatter: '帶有漣漪特效的散點圖',
+    effectScatter: '特效散點圖',
     heatmap: '熱力圖',
     funnel: '漏斗圖',
     treemap: '矩形樹圖',
-    boxplot: '盒鬚圖',
-    gauge: '儀表圖',
+    boxplot: '盒狀圖',
     radar: '雷達圖'
 };
   

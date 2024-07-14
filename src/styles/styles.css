@@ -56,7 +56,7 @@
   .dropdown-container {
     display: inline-block;
     vertical-align: middle;
-    margin: 10px 0;
+    margin: 10px 10px;
   }
   
   /* 控制容器樣式 */

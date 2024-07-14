@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Chart from './components/Chart';
 import Dropdown from './components/Dropdown';
-import Button from './components/Button';
 import { fetchData, processData, sortData, getPaginatedData } from './utils/dataUtils';
 import { fieldCodes, chartTypeTitles } from './utils/constants';
 import './styles/styles.css';
@@ -10,23 +9,38 @@ const App = () => {
   const [chartType, setChartType] = useState('bar');
   const [selectedValues, setSelectedValues] = useState(['庫存數量']);
   const [selectedXAxis, setSelectedXAxis] = useState('商品名稱');
+  const [selectedMidAxis, setSelectedMidAxis] = useState('倉庫名稱');
+  const [selectedSubAxis, setSelectedSubAxis] = useState('-');
+  const [selectChartValues, setSelectChartValues] = useState('庫存數量');
   const [data, setData] = useState({});
   const [sortOrder, setSortOrder] = useState('desc');
   const [recordsPerPage, setRecordsPerPage] = useState(40);
 
   useEffect(() => {
+    console.log("useEffect執行")
     fetchData(selectedXAxis)
       .then(records => {
-        const processedData = processData(records, selectedXAxis);
+        const processedData = processData(records, selectedXAxis, selectedMidAxis, selectedSubAxis, selectChartValues);
         const sortedData = sortData(processedData, sortOrder, selectedValues);
         const paginatedData = getPaginatedData(sortedData, 1, recordsPerPage);
         setData(paginatedData);
       })
       .catch(error => console.error(error));
-  }, [selectedXAxis, selectedValues, chartType, sortOrder, recordsPerPage]);
+  }, [selectedXAxis, selectedMidAxis, selectedSubAxis, selectedValues, chartType, sortOrder, recordsPerPage, selectChartValues]);
 
-  const handleValueChange = (newValues) => {
-    setSelectedValues(newValues);
+  const getDisabledOptions = (selectedOptions) => {
+    return fieldCodes.xAxisOptions.filter(option => selectedOptions.includes(option));
+  };
+
+  const handleXAxisChange = (value) => {
+    setSelectedXAxis(value);
+    if (selectedMidAxis === value) setSelectedMidAxis('');
+    if (selectedSubAxis === value) setSelectedSubAxis('');
+  };
+
+  const handleMidAxisChange = (value) => {
+    setSelectedMidAxis(value);
+    if (selectedSubAxis === value) setSelectedSubAxis('');
   };
 
   return (
@@ -39,7 +53,43 @@ const App = () => {
             label: option
           }))}
           selected={selectedXAxis}
-          onChange={setSelectedXAxis}
+          onChange={handleXAxisChange}
+          disabledOptions={getDisabledOptions([selectedMidAxis, selectedSubAxis])}
+        />
+        <Dropdown
+          label="中分類"
+          options={fieldCodes.xAxisOptions.map(option => ({
+            value: option,
+            label: option
+          }))}
+          selected={selectedMidAxis}
+          onChange={handleMidAxisChange}
+          disabledOptions={getDisabledOptions([selectedXAxis, selectedSubAxis])}
+        />
+        <Dropdown
+          label="小分類"
+          options={['-', ...fieldCodes.xAxisOptions].map(option => ({
+            value: option,
+            label: option
+          }))}
+          selected={selectedSubAxis}
+          onChange={setSelectedSubAxis}
+          disabledOptions={getDisabledOptions([selectedXAxis, selectedMidAxis])}
+        />
+        <Dropdown
+          label="合計"
+          options={fieldCodes.chartValues.map(option => ({
+            value: option,
+            label: option
+          }))}
+          selected={selectChartValues}
+          onChange={setSelectChartValues}
+        />
+        <Dropdown
+          label="排序"
+          options={[{ value: 'asc', label: '升序' }, { value: 'desc', label: '降序' }]}
+          selected={sortOrder}
+          onChange={setSortOrder}
         />
         <Dropdown
           label="顯示圖表"
@@ -51,14 +101,8 @@ const App = () => {
           onChange={setChartType}
         />
         <Dropdown
-          label="排序"
-          options={[{ value: 'asc', label: '升序' }, { value: 'desc', label: '降序' }]}
-          selected={sortOrder}
-          onChange={setSortOrder}
-        />
-        <Dropdown
           label="顯示前幾筆"
-          options={[10, 20, 30, 40, 50].map(option => ({
+          options={[10, 20, 30, 40].map(option => ({
             value: option,
             label: option.toString()
           }))}
@@ -69,8 +113,6 @@ const App = () => {
       <Chart
         chartType={chartType}
         data={data}
-        selectedValues={selectedValues}
-        xAxis={selectedXAxis}
       />
     </div>
   );
